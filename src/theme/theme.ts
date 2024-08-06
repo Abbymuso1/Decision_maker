@@ -1,5 +1,26 @@
-import { createTheme } from '@mui/material/styles';
-import { ThemeOptions } from '@mui/material/styles';
+import { createTheme, ThemeOptions } from '@mui/material/styles';
+import { TypographyOptions } from '@mui/material/styles/createTypography';
+
+// Extend TypographyVariants to include the new variants
+declare module '@mui/material/styles' {
+  interface TypographyVariants {
+    title: React.CSSProperties;
+    subtitle3: React.CSSProperties;
+  }
+
+  interface TypographyVariantsOptions {
+    title?: React.CSSProperties;
+    subtitle3?: React.CSSProperties;
+  }
+}
+
+// Extend the Typography's props to include the new variants
+declare module '@mui/material/Typography' {
+  interface TypographyPropsVariantOverrides {
+    title: true;
+    subtitle3: true;
+  }
+}
 
 const themeOptions: ThemeOptions = {
   palette: {
@@ -14,7 +35,7 @@ const themeOptions: ThemeOptions = {
     },
   },
   typography: {
-    fontFamily: 'Roboto, sans-serif', // Set the desired font family here
+    fontFamily: 'Roboto, sans-serif',
     h1: {
       fontSize: 12,
       color: '#071e22',
@@ -36,12 +57,23 @@ const themeOptions: ThemeOptions = {
       fontWeight: 500,
       fontStyle: 'italic',
     },
-    button: {
-      // fontStyle: 'italic',
+    subtitle2: {
+      fontFamily: 'Lora, serif',
+      fontSize: 36,
+      color: '#337357',
+      fontWeight: '700',
+      textAlign: 'left',
+    },
+    subtitle3: {
+      fontFamily: 'Lora, serif',
+      fontSize: 24,
+      color: '#337357',
+      fontWeight: '700',
+      textAlign: 'left',
     },
   },
 };
 
-const theme = createTheme(themeOptions as ThemeOptions & { overrides?: any });
+const theme = createTheme(themeOptions);
 
 export default theme;

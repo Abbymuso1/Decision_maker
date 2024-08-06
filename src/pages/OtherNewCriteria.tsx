@@ -9,6 +9,7 @@ import {
   Paper,
   useMediaQuery,
   useTheme,
+  Snackbar,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import AdsClickIcon from "@mui/icons-material/AdsClick";
@@ -22,10 +23,6 @@ import { useBreadcrumbs } from "../contexts/BreadcrumbsProvider";
 import DecisionState from "../components/interfaces/DecisionState";
 import { DecisionStateContext } from "../contexts/DecisionStateContext";
 
-const handleClick = () => {
-  console.log("Button is Clicked");
-};
-
 const Item = styled(Paper)(({ theme }) => ({
   backgroundColor: theme.palette.mode === "dark" ? "#1A2027" : "#fff",
   ...theme.typography.body2,
@@ -37,10 +34,9 @@ const Item = styled(Paper)(({ theme }) => ({
 const OtherNewCriteria: React.FC = () => {
   const [formData, setFormData] = useState({ criteria: "" });
   const { decisionState, setDecisionState } = useContext(DecisionStateContext);
+  const [errorMessageOpen, setErrorMessageOpen] = useState(false);
 
   const criteria2 = decisionState.criteria;
-
-  console.log("Decision state on page", decisionState);
 
   const { handleNavigation } = useBreadcrumbs();
   const theme = useTheme();
@@ -54,11 +50,9 @@ const OtherNewCriteria: React.FC = () => {
   };
 
   const handleDelete = (id: number) => {
-    console.log(id);
-    console.log("Criteria:", criteria2);
-    criteria2.splice(id, 1);
-    console.log("Updated criteria: ", criteria2);
-    updateDecisionState({ criteria: criteria2 });
+    const updatedCriteria = [...criteria2];
+    updatedCriteria.splice(id, 1);
+    updateDecisionState({ criteria: updatedCriteria });
   };
 
   const handleYesClick = () => {
@@ -66,6 +60,10 @@ const OtherNewCriteria: React.FC = () => {
   };
 
   const EvaluateCriteria = () => {
+    if (decisionState.criteria.length < 2) {
+      setErrorMessageOpen(true);
+      return;
+    }
     handleNavigation("/EvaluateCriteriaPage", "Evaluate Criteria");
   };
 
@@ -110,15 +108,7 @@ const OtherNewCriteria: React.FC = () => {
             <CustomButton onClick={handleYesClick}>Yes</CustomButton>
             <CustomButton onClick={EvaluateCriteria}>No</CustomButton>
           </Stack>
-          <Box sx={{ display: "flex", alignItems: "flex-end", mt: 2 }}>
-            <SearchIcon sx={{ color: "action.active", mr: 1, my: 0.5 }} />
-            <TextField
-              name="criteria"
-              label="Search Criteria..."
-              variant="standard"
-              fullWidth
-            />
-          </Box>
+          
         </Paper>
       </Stack>
       <Stack sx={{ p: 1, mx: 2 }} gap={4} direction="column">
@@ -155,6 +145,13 @@ const OtherNewCriteria: React.FC = () => {
           ))}
         </Grid>
       </Stack>
+
+      <Snackbar
+        open={errorMessageOpen}
+        autoHideDuration={3000}
+        onClose={() => setErrorMessageOpen(false)}
+        message="You must have at least two criteria to proceed."
+      />
     </Layout>
   );
 };

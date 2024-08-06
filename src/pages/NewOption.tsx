@@ -9,6 +9,7 @@ import {
   Paper,
   Box,
   TextField,
+  Snackbar,
 } from "@mui/material";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import { useBreadcrumbs } from "../contexts/BreadcrumbsProvider";
@@ -22,13 +23,16 @@ const NewOption = () => {
 
   const [option, setOption] = useState<string>("");
   const { decisionState, setDecisionState } = useContext(DecisionStateContext);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   const handleClick = () => {
-    console.log("option", option);
-    console.log(decisionState);
+    if (option.trim() === "") {
+      setSnackbarOpen(true); // Open snackbar if no option is entered
+      return;
+    }
+    
     const updatedOptions = [...decisionState.options, option];
     setDecisionState({ ...decisionState, options: updatedOptions });
-    console.log("Updated Options", decisionState);
     handleNavigation("/OtherNewOption", "Other New Option");
   };
 
@@ -53,9 +57,29 @@ const NewOption = () => {
             mx: 2,
           }}
         >
-          <Typography variant="h4" align="center">
-            Enter Your Option
+          <Typography
+            variant="h4"
+            align="center"
+            sx={{ fontSize: { xs: 'h5.fontSize', sm: 'h4.fontSize' } }}
+          >
+            Add the Options You Have in Mind for Your Decision
           </Typography>
+
+          <Typography
+            variant="body1"
+            align="center"
+            sx={{
+              mt: 1,
+              mb: 2,
+              fontSize: { xs: 'body2.fontSize', sm: 'body1.fontSize' },
+              mx: { xs: 1, sm: 2 }
+            }}
+          >
+            Enter a choice that you are considering for your decision. For example, if you are choosing a car, you might add options like "BMW" or "Mercedes."
+            <br />
+            <strong>Note:</strong> Please add one option at a time and click "Add Option" to include it in your list.
+          </Typography>
+
           <Stack alignItems="center" sx={{ mt: 2 }}>
             <FormatListBulletedIcon
               style={{ fontSize: "56px", padding: "2" }}
@@ -81,11 +105,19 @@ const NewOption = () => {
           </Box>
           <Stack direction="row" justifyContent="center">
             <Button variant="contained" color="primary" onClick={handleClick}>
-              PROCEED
+              Add Option
             </Button>
           </Stack>
         </Paper>
       </Stack>
+
+      {/* Snackbar for validation message */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message="Please enter an option before proceeding."
+      />
     </Layout>
   );
 };

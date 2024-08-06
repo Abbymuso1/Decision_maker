@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import BackButton from "../components/BackButton";
 import {
   Button,
@@ -7,6 +7,7 @@ import {
   useMediaQuery,
   useTheme,
   Paper,
+  Snackbar,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import { styled } from "@mui/material/styles";
@@ -45,12 +46,18 @@ const OtherNewOption = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  console.log(decisionState);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
   const { handleNavigation } = useBreadcrumbs();
 
   const options = decisionState.options;
 
   const EvaluateOptions = () => {
+    if (options.length < 2) {
+      setSnackbarOpen(true); // Open snackbar if less than two options
+      return;
+    }
+
     const initializeComparisons = (
       criteria: Criterion[],
       options: string[]
@@ -82,13 +89,9 @@ const OtherNewOption = () => {
       ...updatedProperties,
     }));
   };
-  console.log(decisionState)
 
   const handleDelete = (id: number) => {
-    console.log(id);
-    console.log("Criteria:", options);
     options.splice(id, 1);
-    console.log("Updated criteria: ", options);
     updateDecisionState({ options: options });
   };
 
@@ -124,12 +127,13 @@ const OtherNewOption = () => {
               <CustomButton onClick={handleClick}>Yes</CustomButton>
             </NavLink>
 
-            <NavLink
-              to="/EvaluateOptionsPage"
-              style={{ textDecoration: "none", color: "inherit" }}
+            <CustomButton
+              variant="contained"
+              // color="primary"
+              onClick={EvaluateOptions}
             >
-              <CustomButton onClick={EvaluateOptions}>No</CustomButton>
-            </NavLink>
+              No
+            </CustomButton>
           </Stack>
         </Paper>
       </Stack>
@@ -167,6 +171,14 @@ const OtherNewOption = () => {
           ))}
         </Grid>
       </Stack>
+
+      {/* Snackbar for validation message */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message="Please enter at least two options before proceeding."
+      />
     </Layout>
   );
 };

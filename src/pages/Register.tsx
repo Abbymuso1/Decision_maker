@@ -15,19 +15,31 @@ import { useBreadcrumbs } from "../contexts/BreadcrumbsProvider";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 
-import { signUp } from "../supabase/auth"; // Import the signUp function
+import { signUp, signIn } from "../supabase/auth"; // Import signIn function as well
 
 import Snackbar from "@mui/material/Snackbar";
 import MuiAlert, { AlertProps } from "@mui/material/Alert";
+import { useAuth } from "../contexts/AuthContext";
 
 function Alert(props: AlertProps) {
   return <MuiAlert elevation={6} variant="filled" {...props} />;
 }
 
-function Register({ setAuth }: any) {
+interface RegisterProps {
+  setAuth: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+function Register({ setAuth }: RegisterProps) {
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   const { handleNavigation } = useBreadcrumbs();
   const [successMessageOpen, setSuccessMessageOpen] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState("");
+
+  const handleCloseSnackbar = () => {
+    setSuccessMessageOpen(false);
+    if (errorMessage) setErrorMessage("");
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,12 +51,19 @@ function Register({ setAuth }: any) {
 
     const displayName = `${firstName}`;
     try {
+      // Register the user
       await signUp(email, password, displayName);
+
+      // Automatically sign in the user
+      await signIn(email, password);
+
+      // Update authentication state
       setAuth(true);
       navigate("/", { state: { isAuthenticated: true, message: "Registration successful!" } });
-      setSuccessMessageOpen(true); // Display success message
+      setSuccessMessageOpen(true);
     } catch (error: any) {
-      console.error("Sign up error:", error.message);
+      console.error("Registration or sign-in error:", error.message);
+      setErrorMessage("Registration or sign-in failed. Please try again.");
     }
   };
 
@@ -147,9 +166,24 @@ function Register({ setAuth }: any) {
               </Grid>
             </Grid>
           </Box>
+          {errorMessage && (
+            <Snackbar open={!!errorMessage} autoHideDuration={6000} onClose={handleCloseSnackbar}>
+              <Alert onClose={handleCloseSnackbar} severity="error">
+                {errorMessage}
+              </Alert>
+            </Snackbar>
+          )}
+          <Snackbar
+            open={successMessageOpen}
+            autoHideDuration={6000}
+            onClose={handleCloseSnackbar}
+          >
+            <Alert onClose={handleCloseSnackbar} severity="success">
+              Registration successful!
+            </Alert>
+          </Snackbar>
         </Box>
       </Container>
-
     </ThemeProvider>
   );
 }

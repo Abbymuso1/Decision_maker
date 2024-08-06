@@ -28,6 +28,7 @@ import EvaluateOptions from "./pages/EvaluateOptionsPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ExistingCriteria from "./pages/ExistingCriteria";
+import { AuthProvider } from "./contexts/AuthContext";
 
 
 function App() {
@@ -59,6 +60,7 @@ function App() {
         <DecisionStateContext.Provider
           value={{ decisionState, setDecisionState }}
         >
+          <AuthProvider>
           <Routes>
             <Route path="/" element={<Home />} />
             {/* Abi */}
@@ -78,6 +80,7 @@ function App() {
             <Route path="/EvaluateOptionsPage" element={<EvaluateOptions />} />
             <Route path="/ExistingCriteria" element={<ExistingCriteria />} />
           </Routes>
+          </AuthProvider>
         </DecisionStateContext.Provider>
       </BreadcrumbsProvider>
     </>

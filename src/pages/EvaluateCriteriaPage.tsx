@@ -4,62 +4,30 @@ import {
   Stack,
   Slider,
   Typography,
-  Alert,
   Button,
 } from "@mui/material";
 import Layout from "../components/Layout";
 import BackButton from "../components/BackButton";
 import { NavLink } from "react-router-dom";
 import { useBreadcrumbs } from "../contexts/BreadcrumbsProvider";
-import { useContext, useEffect, useState } from "react";
+import { useContext } from "react";
 import { DecisionStateContext } from "../contexts/DecisionStateContext";
 
 const CriteriaPage = () => {
   const { decisionState, setDecisionState } = useContext(DecisionStateContext);
-  const [weightsValid, setWeightsValid] = useState(true);
   const { handleNavigation } = useBreadcrumbs();
 
-  const options: string[] = ["Cost", "Safety", "Maintenance"]; // Explicitly typing options array
+  const options: string[] = ["Cost", "Safety", "Maintenance"];
 
   const handleWeightChange = (index: number, value: number) => {
-    // Explicitly typing index and value parameters
-    const otherTotalWeight = decisionState.criteria.reduce(
-      (total, criterion, i) => {
-        return i === index ? total : total + criterion.weight;
-      },
-      0
-    );
-
-    const remainingWeight = 1 - value;
-    const factor =
-      otherTotalWeight === 0 ? 0 : remainingWeight / otherTotalWeight;
-
     const updatedCriteria = decisionState.criteria.map((criterion, i) => {
       if (i === index) {
         return { ...criterion, weight: value };
-      } else {
-        return { ...criterion, weight: criterion.weight * factor };
       }
+      return criterion;
     });
 
     setDecisionState({ ...decisionState, criteria: updatedCriteria });
-  };
-
-  useEffect(() => {
-    const totalWeight = decisionState.criteria.reduce(
-      (total, criterion) => total + criterion.weight,
-      0
-    );
-    setWeightsValid(totalWeight === 1);
-  }, [decisionState.criteria]);
-
-  const handleClick = () => {
-    if (weightsValid) {
-      console.log("Weights are valid and sum to 1:", decisionState.criteria);
-      handleNavigation("/NewOption", "New Option");
-    } else {
-      console.log("Weights do not sum to 1. Please correct them.");
-    }
   };
 
   const EnterOption = () => {
@@ -80,28 +48,28 @@ const CriteriaPage = () => {
           }}
         >
           <Typography variant="h4" gutterBottom>
-            Update Weights
+            Adjust Weights for Your Criteria
+          </Typography>
+          <Typography variant="body1" paragraph>
+            You can assign a weight to each criterion based on its importance in your decision-making process. Use the sliders below to adjust the weight for each criterion. The weight determines the significance of the criterion in the overall decision.
           </Typography>
           {decisionState.criteria.map((criterion, index) => (
             <Box key={index} mb={2}>
-              <Typography variant="h6">{`${criterion.name} Weight`}</Typography>
+              <Typography variant="h6">{`${criterion.name}: Set Weight`}</Typography>
               <Slider
                 value={criterion.weight}
                 min={0}
                 max={1}
                 step={0.01}
                 onChange={
-                  (e, value) => handleWeightChange(index, value as number) // Ensure value is typed as number
+                  (e, value) => handleWeightChange(index, value as number)
                 }
                 valueLabelDisplay="auto"
+                valueLabelFormat={(value) => `${value * 100}%`}
               />
             </Box>
           ))}
-          {!weightsValid && (
-            <Alert severity="error" sx={{ marginBottom: 2 }}>
-              The weights must sum to 1. Please adjust the values.
-            </Alert>
-          )}
+
           <Box sx={{ display: "flex", justifyContent: "center" }}>
             <NavLink
               to="/NewOption"
@@ -112,7 +80,7 @@ const CriteriaPage = () => {
                 onClick={EnterOption}
                 sx={{ width: "100%" }}
               >
-                PROCEED
+                Continue to Add New Option
               </Button>
             </NavLink>
           </Box>

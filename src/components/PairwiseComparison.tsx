@@ -7,12 +7,12 @@ import {
   IconButton,
   useMediaQuery,
   useTheme,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import BarChartComponent from "./interfaces/BarChartComponent";
 import { DecisionStateContext } from "../contexts/DecisionStateContext";
-import { Criterion } from "./interfaces/DecisionState";
 import { useBreadcrumbs } from "../contexts/BreadcrumbsProvider";
 
 interface Comparison {
@@ -28,6 +28,7 @@ const PairwiseComparison: React.FC = () => {
   const { decisionState, setDecisionState } = useContext(DecisionStateContext);
   const [criterionIndex, setCriterionIndex] = useState(0);
   const [combinationIndex, setCombinationIndex] = useState(0);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const { handleNavigation } = useBreadcrumbs();
 
   const theme = useTheme();
@@ -79,6 +80,11 @@ const PairwiseComparison: React.FC = () => {
       ).map((option2) => [option1, option2])
     )
     .flat();
+
+  useEffect(() => {
+    // Notify user when criterion changes
+    setNotificationOpen(true);
+  }, [criterionIndex]);
 
   const handlePrevious = () => {
     setCombinationIndex((prevIndex) =>
@@ -136,6 +142,29 @@ const PairwiseComparison: React.FC = () => {
 
   return (
     <Container>
+      <Box sx={{ p: { xs: 1, md: 1.5 }, textAlign: "center" }}>
+        <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+          Please Set Your Preference on Options Based On This Criteria
+        </Typography>
+      </Box>
+      <Box sx={{ p: { xs: 1, md: 2 }, textAlign: "center" }}>
+        <Typography variant="body2">
+          You’re comparing options based on{" "}
+          <Typography
+            component="span"
+            sx={{
+              fontWeight: "bold",
+              color: "primary.main",
+              bgcolor: "yellow",  // Change this to your preferred background color
+              px: 0.5,  // Adds horizontal padding around the text
+              borderRadius: 1,  // Adds slight rounding to the corners
+            }}
+          >
+            {criteria[criterionIndex]}
+          </Typography>
+          . This means you should focus on how well each option performs with regard to this particular criterion. Choose the option that best meets this criterion.
+        </Typography>
+      </Box>
       <Box
         sx={{
           display: "flex",
@@ -153,19 +182,13 @@ const PairwiseComparison: React.FC = () => {
             alignItems: "center",
           }}
         >
-          <IconButton
-            aria-label="arrowbackios"
-            onClick={handlePreviousCriterion}
-          >
+          <IconButton aria-label="arrowbackios" onClick={handlePreviousCriterion}>
             <ArrowBackIosIcon />
           </IconButton>
           <Typography sx={{ fontWeight: "bold" }}>
             {criteria[criterionIndex]}
           </Typography>
-          <IconButton
-            aria-label="arrowforwardios"
-            onClick={handleNextCriterion}
-          >
+          <IconButton aria-label="arrowforwardios" onClick={handleNextCriterion}>
             <ArrowForwardIosIcon />
           </IconButton>
         </Box>
@@ -221,19 +244,28 @@ const PairwiseComparison: React.FC = () => {
           ))}
         </Box>
         <Box sx={{ p: { xs: 1, md: 1.5 }, textAlign: "center" }}>
-          <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-            Please Set Your Preference on Options Based On This Criteria
-          </Typography>
           <Typography variant="caption">
             Click one of the Buttons Above
           </Typography>
         </Box>
-        <Box sx={{ p: { xs: 1, md: 2 } }}>
-          <Typography variant="caption" sx={{ fontWeight: "bold" }}>
-            Evaluation based on '{criteria[criterionIndex]}'
-          </Typography>
-        </Box>
       </Box>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notificationOpen}
+        autoHideDuration={3000}
+        onClose={() => setNotificationOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}  // Center horizontally at the top
+        sx={{
+          top: '50%',  // Center vertically
+          transform: 'translateY(-50%)',  // Offset to exactly center
+        }}
+      >
+        <Alert onClose={() => setNotificationOpen(false)} severity="info">
+        Your comparison is now based on{" "}
+          <strong>{criteria[criterionIndex]}</strong>.
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

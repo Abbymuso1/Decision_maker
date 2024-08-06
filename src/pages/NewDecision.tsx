@@ -9,6 +9,8 @@ import {
   useTheme,
   Paper,
   TextField,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import Layout from "../components/Layout";
 import GolfCourseIcon from "@mui/icons-material/GolfCourse";
@@ -21,6 +23,7 @@ import DecisionState from "../components/interfaces/DecisionState";
 
 const NewDecision: React.FC = () => {
   const [decision, setDecision] = useState<string>("");
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const { decisionState, setDecisionState } = useContext(DecisionStateContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -52,10 +55,16 @@ const NewDecision: React.FC = () => {
 
   const { handleNavigation } = useBreadcrumbs();
   const EnterNewCriteria = () => {
+    if (decision.trim() === "") {
+      setNotificationOpen(true); // Show notification if input is empty
+      return;
+    }
+    
     updateDecisionState(decisionObject);
     handleNavigation("/ExistingCriteria", "Existing Criteria");
   };
 
+  
   return (
     <Layout>
       <Stack style={{ margin: "2vh" }}>
@@ -86,12 +95,46 @@ const NewDecision: React.FC = () => {
             spacing={2}
             alignItems="center"
             justifyContent="center"
+            sx={{ p: 2 }}
           >
-            <Typography variant="h3">
-              Let us Begin With The End in Mind.
-            </Typography>
-            <Typography variant="h3">What is Your Goal?</Typography>
-            <GolfCourseIcon sx={{ fontSize: 40 }} />
+          <Typography
+        variant="h3"
+        align="center"
+        sx={{
+          fontSize: {
+            xs: '1.5rem', // Extra small screens (mobile)
+            sm: '2rem',   // Small screens (tablets)
+            md: '2rem', // Medium screens (small desktops)
+            lg: '2rem'    // Large screens (large desktops)
+          }
+        }}
+      >
+        Let us Begin With The End in Mind.
+      </Typography>
+      <Typography
+        variant="h3"
+        align="center"
+        sx={{
+          fontSize: {
+            xs: '1rem', // Extra small screens (mobile)
+            sm: '2rem',   // Small screens (tablets)
+            md: '2rem', // Medium screens (small desktops)
+            lg: '2rem'    // Large screens (large desktops)
+          }
+        }}
+      >
+        What Decision Are You Trying to Make?
+      </Typography>
+      <GolfCourseIcon
+        sx={{ 
+          fontSize: {
+            xs: 30, // Extra small screens (mobile)
+            sm: 35, // Small screens (tablets)
+            md: 40, // Medium screens (small desktops)
+            lg: 45  // Large screens (large desktops)
+          }
+        }}
+      />
             <TextField
               id="filled-basic"
               defaultValue=""
@@ -120,6 +163,18 @@ const NewDecision: React.FC = () => {
           </Stack>
         </Paper>
       </Stack>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notificationOpen}
+        autoHideDuration={3000}
+        onClose={() => setNotificationOpen(false)}
+        message="Please enter a decision before proceeding."
+      >
+        <Alert onClose={() => setNotificationOpen(false)} severity="warning">
+          Please enter a decision before proceeding.
+        </Alert>
+      </Snackbar>
     </Layout>
   );
 };

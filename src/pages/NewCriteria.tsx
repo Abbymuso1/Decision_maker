@@ -9,43 +9,51 @@ import {
   useMediaQuery,
   useTheme,
   Paper,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import BackButton from "../components/BackButton";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import Layout from "../components/Layout";
-import CustomButton from "../components/Button";
 import { DecisionStateContext } from "../contexts/DecisionStateContext";
 import { useBreadcrumbs } from "../contexts/BreadcrumbsProvider";
-
-interface criterion {
-  name: string;
-  weight: number;
-  comparisons: object;
-}
-
-const defaultCriterion = {
-  name: "",
-  weight: 0,
-  comparisons: {},
-};
+import { supabase } from "../supabase/supabaseClient"; // Import supabase client
+import { getUserId } from "../supabase/auth"; // Import getUserId function
 
 const NewCriteria = () => {
-  const [formData, setFormData] = useState({ newCriteria: "" });
   const [criterion, setCriterion] = useState<string>("");
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const { decisionState, setDecisionState } = useContext(DecisionStateContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
-  const criteria = decisionState.criteria;
-
   const navigate = useNavigate();
-
   const { handleNavigation } = useBreadcrumbs();
 
-  const addCriteria = () => {
-    const newCriterion = { name: criterion, weight: 0, comparisons: {} };
-    const updatedCriteria = [...decisionState.criteria, newCriterion];
+  const addCriteria = async () => {
+    if (criterion.trim() === "") {
+      setNotificationOpen(true); // Show notification if input is empty
+      return;
+    }
 
+    const userId = await getUserId(); // Get the current user's ID
+
+    if (userId) {
+      // Add the new criterion to the database only if the user is authenticated
+      const { data, error } = await supabase
+        .from("criteria")
+        .insert([{ name: criterion, user_id: userId }]);
+
+      if (error) {
+        console.error("Error adding criteria:", error);
+        return;
+      }
+    } else {
+      console.log("User not authenticated. Criterion will not be saved to the database.");
+    }
+
+    // Update the local state with the new criterion
+    const newCriterion = { name: criterion, weight: 1, comparisons: {} };
+    const updatedCriteria = [...decisionState.criteria, newCriterion];
     setDecisionState({ ...decisionState, criteria: updatedCriteria });
 
     handleNavigation("/OtherNewCriteria", "Add Another Criteria");
@@ -96,7 +104,7 @@ const NewCriteria = () => {
               <TextField
                 id="filled-basic"
                 name="newCriteria"
-                label="ie. Cost, Comfort"
+                label="e.g., Cost, Comfort"
                 variant="filled"
                 value={criterion}
                 onChange={(e) => setCriterion(e.target.value)}
@@ -115,11 +123,37 @@ const NewCriteria = () => {
               onClick={addCriteria}
               type="submit"
             >
-              Enter New Criteria
+              Submit New Criteria
+            </Button>
+            <Typography variant="body1" sx={{ my: 2 }}>
+              or
+            </Typography>
+            <Button
+              variant="outlined"
+              onClick={() => navigate("/ExistingCriteria")}
+              sx={{
+                borderRadius: "16px",
+                paddingRight: 2,
+                paddingLeft: 2,
+                minWidth: "200px",
+              }}
+            >
+              View Existing Criteria
             </Button>
           </Stack>
         </Paper>
       </Stack>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notificationOpen}
+        autoHideDuration={3000}
+        onClose={() => setNotificationOpen(false)}
+      >
+        <Alert onClose={() => setNotificationOpen(false)} severity="warning">
+          Please enter a criteria before proceeding.
+        </Alert>
+      </Snackbar>
     </Layout>
   );
 };

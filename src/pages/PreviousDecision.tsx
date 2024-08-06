@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
-  Grid,
   Stack,
   Paper,
   Button,
@@ -10,16 +9,22 @@ import {
   Modal,
   Backdrop,
   Fade,
+  LinearProgress,
+  Container,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Pagination,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Layout from "../components/Layout";
 import AddIcon from "@mui/icons-material/Add";
 import BackButton from "../components/BackButton";
-import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import { NavLink } from "react-router-dom";
-import { Search } from "@mui/icons-material";
 import { supabase } from "../supabase/supabaseClient";
-
-// Define interfaces based on your data structure
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import ReactConfetti from 'react-confetti';
+import EmojiEventsTwoToneIcon from '@mui/icons-material/EmojiEventsTwoTone';
 interface Criterion {
   name: string;
   weight: number;
@@ -28,16 +33,7 @@ interface Criterion {
 
 interface Decision {
   id: number;
-  decision:
-    | string
-    | {
-        model: string;
-        options: string[];
-        results: {};
-        criteria: Criterion[];
-        totalScores: Record<string, number>;
-        aggregatedPreferences: Record<string, Record<string, number>>;
-      };
+  decision: any;
 }
 
 const PreviousDecisions: React.FC = () => {
@@ -45,13 +41,37 @@ const PreviousDecisions: React.FC = () => {
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [filteredDecisions, setFilteredDecisions] = useState<Decision[]>([]);
   const [currentDecision, setCurrentDecision] = useState<Decision | null>(null);
-  const [modalOpen, setModalOpen] = useState<boolean>(false); // State to manage modal open/close
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [criteria, setCriteria] = useState<Criterion[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [page, setPage] = useState<number>(1);
+  const itemsPerPage = 5;
+  const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     fetchDecisions();
   }, []);
 
+  useEffect(() => {
+    if (isDataLoaded) {
+      const query = searchQuery.toLowerCase();
+      const filtered = decisions.filter((decision) => {
+        if (typeof decision.decision === "string") {
+          return decision.decision.toLowerCase().includes(query);
+        }
+        return (
+          decision.decision?.model.toLowerCase().includes(query) ||
+          decision.decision?.criteria.some((criterion: Criterion) =>
+            criterion.name.toLowerCase().includes(query)
+          )
+        );
+      });
+      setFilteredDecisions(filtered);
+    }
+  }, [searchQuery, decisions, isDataLoaded]);
+
   const fetchDecisions = async () => {
+    setIsLoading(true); // Set loading to true when starting the fetch
     try {
       const { data, error } = await supabase
         .from("decisions")
@@ -63,11 +83,48 @@ const PreviousDecisions: React.FC = () => {
       }
 
       if (data) {
-        console.log("Fetched decisions:", data);
-        setDecisions(data);
+        const updatedData = data.map((decision) => {
+          if (typeof decision.decision === "object") {
+            return {
+              ...decision,
+              decision: decision.decision || "No decision available",
+            };
+          }
+          return decision;
+        });
+
+        const sortedData = updatedData.sort((a, b) => b.id - a.id);
+        setDecisions(sortedData);
+        setFilteredDecisions(sortedData);
       }
     } catch (error) {
       console.error("Error fetching decisions:", error);
+    } finally {
+      setIsLoading(false); // Set loading to false when fetch is complete
+      setIsDataLoaded(true); // Indicate that data has been loaded
+    }
+  };
+
+  const fetchCriteria = async (decisionId: number) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("criteria")
+        .select("*")
+        .eq("decision_id", decisionId);
+
+      if (error) {
+        console.error("Error fetching criteria:", error.message);
+        return;
+      }
+
+      if (data) {
+        setCriteria(data);
+      }
+    } catch (error) {
+      console.error("Error fetching criteria:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -75,117 +132,117 @@ const PreviousDecisions: React.FC = () => {
     setSearchQuery(event.target.value);
   };
 
-  const handleSearchSubmit = () => {
-    const normalizedQuery = searchQuery.toLowerCase().trim();
-    if (normalizedQuery === "") {
-      setFilteredDecisions([]);
-    } else {
-      const filtered = decisions.filter(
-        (decision) =>
-          decision.decision &&
-          typeof decision.decision !== "string" &&
-          decision.decision.model.toLowerCase().includes(normalizedQuery)
-      );
-      if (filtered.length === 0) {
-        setFilteredDecisions([
-          {
-            id: 0,
-            decision: "No decision found",
-          },
-        ]);
-      } else {
-        setFilteredDecisions(filtered);
-      }
-    }
+  // Highlight text with different colors
+  const highlightText = (text: string, query: string) => {
+    if (!query.trim()) return text;
+  
+    const parts = text.split(new RegExp(`(${query})`, "gi"));
+    return parts.map((part, index) =>
+      part.toLowerCase() === query ? (
+        <span key={index} style={{ backgroundColor: getRandomColor() }}>
+          {part}
+        </span>
+      ) : (
+        part
+      )
+    );
+  };
+  
+
+  // Generate a random color
+  const getRandomColor = () => {
+    const colors = ["#FFDDC1", "#FFABAB", "#FFC3A0", "#D5AAFF", "#9CF4E8"];
+    return colors[Math.floor(Math.random() * colors.length)];
   };
 
-  const clearSearchResults = () => {
-    setSearchQuery("");
-    setFilteredDecisions([]);
-  };
-
+  // No need to fetch from the database again for the specific decision since it had already been fetched in the fetchDecisions functions
   const handleSeeCriteria = (decision: Decision) => {
-    console.log("Selected decision:", decision);
+    console.log("Current Decision", decision);
     setCurrentDecision(decision);
-    setModalOpen(true); // Open modal when decision is selected
+    setModalOpen(true);
   };
+
+  useEffect(() => {
+    console.log("Updated Current Decision", currentDecision);
+  }, [currentDecision]);
 
   const closeModal = () => {
     setCurrentDecision(null);
-    setModalOpen(false); // Close modal when clicking Close button
+    setCriteria([]);
+    setModalOpen(false);
   };
+
+  const handlePageChange = (
+    event: React.ChangeEvent<unknown>,
+    value: number
+  ) => {
+    setPage(value);
+  };
+
+ 
+  const noResultsMessage = "No previous decisions found.";
+// Custom hook to get window size
+const useWindowSize = () => {
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  return [windowSize.width, windowSize.height];
+}
+  
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [width, height] = useWindowSize();
+
+  useEffect(() => {
+    // Show confetti when component mounts (or when decision is available)
+    setShowConfetti(true);
+    // Hide confetti after 5 seconds
+    const timer = setTimeout(() => setShowConfetti(false), 5000);
+    return () => clearTimeout(timer);
+  }, [decisions]);
+
+  console.log('Confetti dimensions:', width, height);
 
   return (
     <Layout>
-      <Stack sx={{ margin: { xs: "2vh", md: "2vh 30px" } }}>
-        <BackButton />
-      </Stack>
-      <Stack
-        direction="column"
-        spacing={2}
-        alignItems="center"
-        justifyContent="center"
+      <Container
+        maxWidth="md"
+        sx={{ paddingX: { xs: 2, sm: 3 }, paddingY: { xs: 2, sm: 3 } }}
       >
-        <Paper
-          sx={{
-            padding: 3,
-            textAlign: "center",
-            maxWidth: "100%",
-            margin: "auto",
-            marginBottom: 2,
-          }}
-        >
-          <Typography variant="h3" align="center">
-            List of Previous Decisions
-          </Typography>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              marginTop: "2vh",
-              width: { xs: "100%", sm: "80%", md: "60%", lg: "50%" },
-              margin: "auto",
-            }}
-          >
-            <TextField
-              value={searchQuery}
-              onChange={handleSearchChange}
-              label="Search previous decisions"
-              variant="outlined"
-              size="small"
-              sx={{ marginBottom: 1, width: "100%" }}
-            />
+        <Stack spacing={2}>
+          <BackButton />
+          <Paper sx={{ padding: 3, textAlign: "center" }}>
+            <Typography variant="h3">List of Previous Decisions</Typography>
             <Box
               sx={{
                 display: "flex",
-                justifyContent: "center",
-                width: "100%",
+                flexDirection: "column",
+                alignItems: "center",
+                marginTop: 2,
               }}
             >
-              <Button
-                variant="contained"
-                onClick={handleSearchSubmit}
-                sx={{ marginRight: 1 }}
-              >
-                <Search />
-              </Button>
-              <Button
+              <TextField
+                value={searchQuery}
+                onChange={handleSearchChange}
+                label="Search previous decisions"
                 variant="outlined"
-                onClick={clearSearchResults}
-                sx={{ marginLeft: 1 }}
-              >
-                Clear
-              </Button>
-            </Box>
-            <Box mt={2} width="100%">
+                size="small"
+                fullWidth
+                sx={{ marginBottom: 2 }}
+              />
               <NavLink
                 to="/newDecision"
-                style={{
-                  textDecoration: "none",
-                  color: "inherit",
-                  width: "100%",
-                }}
+                style={{ textDecoration: "none", width: "100%" }}
               >
                 <Button
                   variant="contained"
@@ -197,104 +254,228 @@ const PreviousDecisions: React.FC = () => {
                 </Button>
               </NavLink>
             </Box>
-          </Box>
-        </Paper>
+          </Paper>
 
-        <Grid container spacing={2} justifyContent="center">
-          {(filteredDecisions.length > 0 ? filteredDecisions : decisions).map(
-            (decision, index) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={decision.id}>
-                <Paper
-                  sx={{
-                    backgroundColor: index % 2 === 0 ? "#f0f0f0" : "#ffffff",
-                    padding: 3,
-                    textAlign: "center",
-                  }}
-                >
-                  <Stack
-                    direction="column"
-                    alignItems="center"
-                    spacing={1}
-                    sx={{ minHeight: 140 }}
-                  >
-                    <PsychologyOutlinedIcon style={{ fontSize: 56 }} />
-                    <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-                      {typeof decision.decision === "string"
-                        ? decision.decision
-                        : (decision.decision.options || "").slice(0, 10)}
-                    </Typography>
-
-                    <Button
-                      onClick={() => handleSeeCriteria(decision)}
-                      variant="outlined"
-                      color="primary"
-                      size="small"
-                    >
-                      See Criteria
-                    </Button>
-                  </Stack>
-                </Paper>
-              </Grid>
-            )
-          )}
-        </Grid>
-
-        <Modal
-          open={modalOpen}
-          onClose={closeModal}
-          aria-labelledby="modal-modal-title"
-          aria-describedby="modal-modal-description"
-          closeAfterTransition
-          BackdropComponent={Backdrop}
-          BackdropProps={{
-            timeout: 500,
-            style: { zIndex: 999 }, // Adjust z-index to ensure modal is in front of backdrop
-          }}
-        >
-          <Fade in={modalOpen}>
+          {isLoading ? (
             <Box
               sx={{
-                backgroundColor: "white",
-                boxShadow: 24,
-                padding: 3,
-                maxWidth: 600,
-                margin: "auto",
-                marginTop: "10vh",
-                borderRadius: 8,
-                position: "relative", // Ensure position is relative for z-index to work
-                zIndex: 1000, // Ensure modal content is above backdrop
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100px",
               }}
             >
-              <Typography variant="h5" id="modal-modal-title" align="center">
-                {currentDecision?.decision &&
-                typeof currentDecision.decision !== "string"
-                  ? currentDecision.decision.model
-                  : "Decision details are not available"}
-              </Typography>
-              <Box sx={{ maxHeight: 300, overflowY: "auto", marginTop: 2 }}>
-                {currentDecision?.decision &&
-                typeof currentDecision.decision !== "string" &&
-                currentDecision.decision.criteria ? (
-                  currentDecision.decision.criteria.map(
-                    (criterion: Criterion, index: number) => (
-                      <Typography key={index} variant="body1">
-                        {criterion.name}
-                      </Typography>
-                    )
-                  )
-                ) : (
-                  <Typography variant="body1">
-                    Decision details are not available.
-                  </Typography>
-                )}
-              </Box>
-              <Button onClick={closeModal} variant="outlined" sx={{ mt: 2 }}>
-                Close
-              </Button>
+              <LinearProgress sx={{ width: "100%" }} />
             </Box>
-          </Fade>
-        </Modal>
-      </Stack>
+          ) : filteredDecisions.length === 0 && isDataLoaded ? (
+            <Typography variant="h6" color="textSecondary" align="center">
+              {noResultsMessage}
+            </Typography>
+          ) : (
+            <Stack spacing={2}>
+              {filteredDecisions
+                .slice((page - 1) * itemsPerPage, page * itemsPerPage)
+                .map((decision) => (
+                  <Accordion key={decision.id}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="subtitle1">
+                    <span style={{ backgroundColor: '#f0f0f0', padding: '0 4px', borderRadius: '4px' }}>
+    Decision Made:
+  </span>{" "}
+                        {highlightText(
+                          typeof decision.decision.decision === "string"
+                            ? decision.decision.decision
+                            : decision.decision?.model || "No model available",
+                          searchQuery
+                        )}
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Stack direction="column" spacing={2}>
+                        {/* <Typography variant="body1">
+                        {highlightText(typeof decision.decision.decision === "string" ? decision.decision.decision : `Model: ${decision.decision?.model}`, searchQuery)}
+                      </Typography> */}
+
+
+<Box sx={{ border: '1px solid #ddd', borderRadius: 1, padding: 1, position: 'relative' }}>
+    
+      <Typography variant="body1" sx={{ fontWeight: 'bold', marginBottom: 1 }}>
+        Decision Results:
+      </Typography>
+      <Typography>
+        Winning Option : <EmojiEventsTwoToneIcon style={{ color: 'gold' }} /> {Object.keys(decision.decision.totalScores).at(-1)}
+      </Typography>
+      <BarChart
+        width={500}
+        height={300}
+        data={Object.keys(decision.decision.totalScores).map((option) => ({
+          name: option,
+          preferences: decision.decision.totalScores[option],
+        }))}
+        margin={{ top: 20, right: 30, bottom: 20, left: 0 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="name" />
+        <YAxis />
+        <Tooltip />
+        <Bar dataKey="preferences" fill="#8884d8" />
+      </BarChart>
+    </Box>
+
+                        <Button
+                          onClick={() => handleSeeCriteria(decision)}
+                          variant="outlined"
+                          color="primary"
+                          size="small"
+                        >
+                          See Criteria
+                        </Button>
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              <Pagination
+                count={Math.ceil(filteredDecisions.length / itemsPerPage)}
+                page={page}
+                onChange={handlePageChange}
+                sx={{ marginTop: 2 }}
+              />
+            </Stack>
+          )}
+
+          <Modal
+            open={modalOpen}
+            onClose={closeModal}
+            aria-labelledby="modal-modal-title"
+            aria-describedby="modal-modal-description"
+            closeAfterTransition
+            BackdropComponent={Backdrop}
+            BackdropProps={{ timeout: 500 }}
+          >
+            <Fade in={modalOpen}>
+              <Box
+                sx={{
+                  backgroundColor: "white",
+                  boxShadow: 24,
+                  padding: 3,
+                  maxWidth: 600,
+                  margin: "auto",
+                  marginTop: "10vh",
+                  borderRadius: 2,
+                  position: "relative",
+                  maxHeight: "80vh",
+                  overflowY: "auto", // Allow scrolling
+                }}
+              >
+                <Typography variant="h4" component="h2" gutterBottom>
+                  Decision Criteria
+                </Typography>
+
+                <Box sx={{ marginBottom: 2 }}>
+                  {currentDecision &&
+                  typeof currentDecision.decision !== "string" &&
+                  currentDecision.decision.criteria.length > 0 ? (
+                    currentDecision.decision.criteria.map(
+                      (criterion: Criterion) => (
+                        <Accordion key={criterion.name}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="h6" sx={{ marginBottom: 1 }}>
+                              {criterion.name}
+                            </Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Box sx={{ padding: 2 }}>
+                              <Typography
+                                variant="body1"
+                                sx={{ marginBottom: 1 }}
+                              >
+                                <strong>Weight:</strong>{" "}
+                                {criterion.weight.toFixed(2)}
+                              </Typography>
+                              <LinearProgress
+                                variant="determinate"
+                                value={criterion.weight * 100}
+                                sx={{
+                                  height: 8,
+                                  borderRadius: 5,
+                                  marginBottom: 1,
+                                }}
+                              />
+                              <Typography
+                                variant="body1"
+                                sx={{ marginBottom: 1 }}
+                              >
+                                <strong>Comparisons:</strong>
+                              </Typography>
+
+                              {Object.entries(criterion.comparisons).length >
+                              0 ? (
+                                <Box
+                                  sx={{
+                                    border: "1px solid #ddd",
+                                    borderRadius: 1,
+                                    padding: 1,
+                                  }}
+                                >
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ fontWeight: "bold", marginBottom: 1 }}
+                                  >
+                                    Comparison Results:
+                                  </Typography>
+                                  <BarChart
+                                    width={500}
+                                    height={300}
+                                    data={Object.keys(
+                                      currentDecision.decision
+                                        .aggregatedPreferences[criterion.name]
+                                    ).map((option) => ({
+                                      name: option,
+                                      preferences:
+                                        currentDecision.decision
+                                          .aggregatedPreferences[
+                                          criterion.name
+                                        ][option],
+                                    }))}
+                                    margin={{
+                                      top: 20,
+                                      right: 30,
+                                      bottom: 20,
+                                      left: 0,
+                                    }}
+                                  >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Bar dataKey="preferences" fill="#8884d8" />
+                                  </BarChart>
+                                </Box>
+                              ) : (
+                                <Typography variant="body2">
+                                  No comparisons available.
+                                </Typography>
+                              )}
+                            </Box>
+                          </AccordionDetails>
+                        </Accordion>
+                      )
+                    )
+                  ) : (
+                    <Typography variant="body1">
+                      No criteria found for this decision.
+                    </Typography>
+                  )}
+                </Box>
+
+                <Button onClick={closeModal} variant="outlined" sx={{ mt: 2 }}>
+                  Close
+                </Button>
+              </Box>
+            </Fade>
+          </Modal>
+        </Stack>
+      </Container>
     </Layout>
   );
 };
